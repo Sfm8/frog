@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игра: Прыгающие Лягушки v3</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to bottom, #87CEEB, #4682B4, #2E8B57);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin: 0 auto;
+            max-width: 1000px;
+        }
+
+        h1 {
+            color: #2E8B57;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(144, 238, 144, 0.3);
+            border-radius: 10px;
+        }
+
+        .game-area {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 50%, #2E8B57 100%);
+            border-radius: 15px;
+            border: 3px solid #228B22;
+            overflow: hidden;
+        }
+
+        .score {
+            font-size: 1.5em;
+            color: #2E8B57;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .current-turn {
+            font-size: 1.3em;
+            color: #FF6347;
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 224, 0.8);
+            border-radius: 10px;
+            border: 2px solid #FF6347;
+        }
+
+        button {
+            background: #32CD32;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #228B22;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .instructions {
+            background: rgba(255, 255, 224, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #32CD32;
+        }
+
+        .frog {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        .frog:hover {
+            filter: brightness(1.1) drop-shadow(2px 2px 6px rgba(0, 0, 0, 0.4));
+            transform: scale(1.05);
+        }
+
+        .frog.selected {
+            filter: brightness(1.2) drop-shadow(0 0 15px #FFD700) drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+            transform: scale(1.1);
+            animation: pulse 1.5s infinite;
+        }
+
+        .lily-pad {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .lily-pad:hover {
+            filter: brightness(1.1);
+            transform: scale(1.02);
+        }
+
+        .lily-pad.available {
+            filter: brightness(1.5) drop-shadow(0 0 10px #FFD700);
+            animation: available-glow 1s infinite alternate;
+        }
+
+        .water-ripple {
+            pointer-events: none;
+        }
+
+        /* Анимации */
+        @keyframes jump {
+            0% { transform: translateY(0) scale(1.1); }
+            50% { transform: translateY(-40px) scale(1.2); }
+            100% { transform: translateY(0) scale(1.1); }
+        }
+
+        .jumping {
+            animation: jump 0.6s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1.1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1.1); }
+        }
+
+        @keyframes available-glow {
+            0% { filter: brightness(1.5) drop-shadow(0 0 10px #FFD700); }
+            100% { filter: brightness(1.7) drop-shadow(0 0 20px #FFD700); }
+        }
+
+        @keyframes ripple {
+            0% { opacity: 0.8; transform: scale(0.5); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+
+        .ripple-animation {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes water-float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            25% { transform: translateY(-2px) rotate(0.5deg); }
+            50% { transform: translateY(-1px) rotate(0deg); }
+            75% { transform: translateY(-2px) rotate(-0.5deg); }
+        }
+
+        .lily-pad {
+            animation: water-float 4s ease-in-out infinite;
+        }
+
+        .lily-pad:nth-child(odd) {
+            animation-delay: -1s;
+        }
+
+        .lily-pad:nth-child(even) {
+            animation-delay: -2s;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🐸 Игра: Прыгающие Лягушки v3</h1>
+        
+        <div class="score">
+            Очки: <span id="score">0</span> | Уровень: <span id="level">1</span>
+        </div>
+
+        <div class="current-turn" id="currentTurn">
+            Выберите лягушку для хода
+        </div>
+        
+        <div class="controls">
+            <button onclick="startGame()">Начать игру</button>
+            <button onclick="pauseGame()">Пауза</button>
+            <button onclick="resetGame()">Сброс</button>
+            <button onclick="addFrog()">Добавить лягушку</button>
+            <button onclick="clearSelection()">Отменить выбор</button>
+        </div>
+        
+        <div class="instructions">
+            <strong>Как играть:</strong> Сначала кликните по лягушке, чтобы выбрать её (появится золотистое свечение). 
+            Затем кликните по доступной кувшинке, чтобы лягушка прыгнула туда. Собирайте очки за успешные прыжки!
+        </div>
+        
+        <div class="game-area">
+            <svg id="gameArea" width="100%" height="600" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+                <!-- Дефинации для переиспользования -->
+                <defs>
+                    <!-- Градиент для воды -->
+                    <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#4682B4;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#2E8B57;stop-opacity:1" />
+                    </linearGradient>
+                    
+                    <!-- Шаблон лягушки -->
+                    <g id="frogTemplate">
+                        <!-- Тело -->
+                        <ellipse cx="0" cy="0" rx="25" ry="20" fill="#32CD32" stroke="#228B22" stroke-width="1.5"/>
+                        <!-- Голова -->
+                        <ellipse cx="0" cy="-15" rx="20" ry="15" fill="#32CD32" stroke="#228B22" stroke-width="1.5"/>
+                        <!-- Глаза -->
+                        <ellipse cx="-8" cy="-22" rx="6" ry="8" fill="#32CD32" stroke="#228B22" stroke-width="1"/>
+                        <ellipse cx="8" cy="-22" rx="6" ry="8" fill="#32CD32" stroke="#228B22" stroke-width="1"/>
+                        <!-- Зрачки -->
+                        <circle cx="-8" cy="-24" r="3" fill="#000"/>
+                        <circle cx="8" cy="-24" r="3" fill="#000"/>
+                        <!-- Блики -->
+                        <circle cx="-6" cy="-25" r="1" fill="#FFF"/>
+                        <circle cx="10" cy="-25" r="1" fill="#FFF"/>
+                        <!-- Рот -->
+                        <path d="M -8 -10 Q 0 -5 8 -10" stroke="#228B22" stroke-width="2" fill="none"/>
+                        <!-- Лапы -->
+                        <ellipse cx="-18" cy="-5" rx="8" ry="5" fill="#32CD32" stroke="#228B22" stroke-width="1"/>
+                        <ellipse cx="18" cy="-5" rx="8" ry="5" fill="#32CD32" stroke="#228B22" stroke-width="1"/>
+                        <ellipse cx="-20" cy="10" rx="12" ry="6" fill="#32CD32" stroke="#228B22" stroke-width="1"/>
+                        <ellipse cx="20" cy="10" rx="12" ry="6" fill="#32CD32" stroke="#228B22" stroke-width="1"/>
+                        <!-- Животик -->
+                        <ellipse cx="0" cy="5" rx="12" ry="8" fill="#90EE90" opacity="0.8"/>
+                        <!-- Пятна -->
+                        <circle cx="-10" cy="-5" r="3" fill="#228B22" opacity="0.6"/>
+                        <circle cx="12" cy="0" r="2" fill="#228B22" opacity="0.6"/>
+                        <circle cx="0" cy="8" r="2.5" fill="#228B22" opacity="0.6"/>
+                    </g>
+                    
+                    <!-- Шаблон кувшинки -->
+                    <g id="lilyPadTemplate">
+                        <ellipse cx="0" cy="0" rx="40" ry="25" fill="#228B22" opacity="0.8"/>
+                        <ellipse cx="0" cy="0" rx="35" ry="20" fill="#32CD32" opacity="0.9"/>
+                        <ellipse cx="0" cy="0" rx="30" ry="15" fill="#90EE90" opacity="0.6"/>
+                        <path d="M 35 0 L 30 -5 L 35 5 Z" fill="#228B22"/>
+                        <circle cx="0" cy="0" r="3" fill="#FFD700" opacity="0.8"/>
+                        <!-- Прожилки на листе -->
+                        <path d="M -30 0 Q 0 -5 30 0" stroke="#228B22" stroke-width="1" fill="none" opacity="0.6"/>
+                        <path d="M -20 -10 Q 0 -2 20 -10" stroke="#228B22" stroke-width="1" fill="none" opacity="0.4"/>
+                        <path d="M -20 10 Q 0 2 20 10" stroke="#228B22" stroke-width="1" fill="none" opacity="0.4"/>
+                    </g>
+                </defs>
+                
+                <!-- Фон воды -->
+                <rect width="100%" height="100%" fill="url(#waterGradient)"/>
+                
+                <!-- Водные эффекты -->
+                <circle cx="150" cy="500" r="30" fill="none" stroke="#4169E1" stroke-width="2" opacity="0.2" class="water-ripple">
+                    <animate attributeName="r" values="30;50;30" dur="6s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.2;0.05;0.2" dur="6s" repeatCount="indefinite"/>
+                </circle>
+                
+                <circle cx="800" cy="450" r="20" fill="none" stroke="#4169E1" stroke-width="2" opacity="0.3" class="water-ripple">
+                    <animate attributeName="r" values="20;35;20" dur="5s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.3;0.05;0.3" dur="5s" repeatCount="indefinite"/>
+                </circle>
+
+                <circle cx="500" cy="550" r="25" fill="none" stroke="#4169E1" stroke-width="2" opacity="0.25" class="water-ripple">
+                    <animate attributeName="r" values="25;40;25" dur="7s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.25;0.05;0.25" dur="7s" repeatCount="indefinite"/>
+                </circle>
+                
+                <!-- Группа для кувшинок -->
+                <g id="lilyPads"></g>
+                
+                <!-- Группа для лягушек -->
+                <g id="frogs"></g>
+                
+                <!-- Группа для эффектов -->
+                <g id="effects"></g>
+            </svg>
+        </div>
+    </div>
+
+    <script>
+        // Игровые переменные
+        let gameState = {
+            score: 0,
+            level: 1,
+            isPlaying: false,
+            frogs: [],
+            lilyPads: [],
+            nextFrogId: 1,
+            nextPadId: 1,
+            selectedFrog: null
+        };
+
+        // Инициализация игры
+        function initGame() {
+            // Создаем кувшинки
+            const padPositions = [
+                {x: 150, y: 200}, {x: 400, y: 150}, {x: 650, y: 200}, {x: 850, y: 180},
+                {x: 200, y: 350}, {x: 500, y: 320}, {x: 750, y: 380},
+                {x: 100, y: 480}, {x: 350, y: 500}, {x: 600, y: 450}, {x: 900, y: 500}
+            ];
+
+            padPositions.forEach(pos => createLilyPad(pos.x, pos.y));
+
+            // Создаем начальных лягушек
+            createFrog(150, 200);
+            createFrog(400, 150);
+            createFrog(650, 200);
+
+            updateUI();
+        }
+
+        // Создание кувшинки
+        function createLilyPad(x, y) {
+            const pad = {
+                id: gameState.nextPadId++,
+                x: x,
+                y: y,
+                occupied: false
+            };
+
+            gameState.lilyPads.push(pad);
+
+            const padElement = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            padElement.setAttribute("href", "#lilyPadTemplate");
+            padElement.setAttribute("x", x);
+            padElement.setAttribute("y", y);
+            padElement.setAttribute("id", `pad-${pad.id}`);
+            padElement.classList.add("lily-pad");
+            
+            padElement.addEventListener("click", () => onPadClick(pad));
+
+            document.getElementById("lilyPads").appendChild(padElement);
+        }
+
+        // Создание лягушки
+        function createFrog(x, y) {
+            const frog = {
+                id: gameState.nextFrogId++,
+                x: x,
+                y: y,
+                targetX: x,
+                targetY: y,
+                isJumping: false,
+                color: getRandomFrogColor(),
+                name: `Лягушка ${gameState.nextFrogId - 1}`
+            };
+
+            gameState.frogs.push(frog);
+
+            const frogElement = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            frogElement.setAttribute("href", "#frogTemplate");
+            frogElement.setAttribute("x", x);
+            frogElement.setAttribute("y", y);
+            frogElement.setAttribute("id", `frog-${frog.id}`);
+            frogElement.classList.add("frog");
+            
+            // Применяем цвет
+            frogElement.style.filter = `hue-rotate(${frog.color}deg) drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3))`;
+            
+            frogElement.addEventListener("click", () => onFrogClick(frog));
+
+            document.getElementById("frogs").appendChild(frogElement);
+
+            // Отмечаем кувшинку как занятую
+            const pad = findPadAt(x, y);
+            if (pad) pad.occupied = true;
+        }
+
+        // Случайный цвет лягушки
+        function getRandomFrogColor() {
+            const colors = [0, 60, 120, 180, 240, 300]; // Оттенки
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // Поиск кувшинки в координатах
+        function findPadAt(x, y) {
+            return gameState.lilyPads.find(pad => 
+                Math.abs(pad.x - x) < 50 && Math.abs(pad.y - y) < 50
+            );
+        }
+
+        // Клик по лягушке - выбор активной лягушки
+        function onFrogClick(frog) {
+            if (!gameState.isPlaying || frog.isJumping) return;
+
+            // Снимаем выделение с предыдущей лягушки
+            clearSelection();
+
+            // Выбираем новую лягушку
+            gameState.selectedFrog = frog;
+            const frogElement = document.getElementById(`frog-${frog.id}`);
+            frogElement.classList.add("selected");
+
+            // Показываем доступные ходы
+            highlightAvailablePads(frog);
+            
+            // Обновляем информацию о текущем ходе
+            updateCurrentTurn();
+        }
+
+        // Очистка выбора
+        function clearSelection() {
+            if (gameState.selectedFrog) {
+                const frogElement = document.getElementById(`frog-${gameState.selectedFrog.id}`);
+                if (frogElement) {
+                    frogElement.classList.remove("selected");
+                }
+            }
+            gameState.selectedFrog = null;
+            clearHighlights();
+            updateCurrentTurn();
+        }
+
+        // Подсветка доступных кувшинок
+        function highlightAvailablePads(frog) {
+            clearHighlights();
+            
+            gameState.lilyPads.forEach(pad => {
+                const padElement = document.getElementById(`pad-${pad.id}`);
+                if (!pad.occupied && canJumpTo(frog, pad)) {
+                    padElement.classList.add("available");
+                }
+            });
+        }
+
+        // Проверка возможности прыжка
+        function canJumpTo(frog, pad) {
+            const distance = Math.sqrt(
+                Math.pow(frog.x - pad.x, 2) + Math.pow(frog.y - pad.y, 2)
+            );
+            return distance <= 200; // Максимальное расстояние прыжка
+        }
+
+        // Клик по кувшинке
+        function onPadClick(pad) {
+            if (!gameState.isPlaying || !gameState.selectedFrog) return;
+
+            const padElement = document.getElementById(`pad-${pad.id}`);
+            if (!padElement.classList.contains("available")) return;
+
+            jumpFrogTo(gameState.selectedFrog, pad);
+            clearSelection();
+        }
+
+        // Прыжок лягушки
+        function jumpFrogTo(frog, targetPad) {
+            if (frog.isJumping || targetPad.occupied) return;
+
+            frog.isJumping = true;
+            
+            // Освобождаем текущую кувшинку
+            const currentPad = findPadAt(frog.x, frog.y);
+            if (currentPad) currentPad.occupied = false;
+
+            // Занимаем новую кувшинку
+            targetPad.occupied = true;
+
+            const frogElement = document.getElementById(`frog-${frog.id}`);
+            frogElement.classList.add("jumping");
+
+            // Анимация прыжка
+            setTimeout(() => {
+                frog.x = targetPad.x;
+                frog.y = targetPad.y;
+                frogElement.setAttribute("x", frog.x);
+                frogElement.setAttribute("y", frog.y);
+
+                // Эффект всплеска
+                createSplashEffect(targetPad.x, targetPad.y);
+
+                // Увеличиваем счет
+                gameState.score += 10;
+                updateUI();
+
+                frogElement.classList.remove("jumping");
+                frog.isJumping = false;
+
+                // Проверяем условия повышения уровня
+                checkLevelUp();
+            }, 300);
+        }
+
+        // Эффект всплеска
+        function createSplashEffect(x, y) {
+            const splash = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            splash.setAttribute("cx", x);
+            splash.setAttribute("cy", y);
+            splash.setAttribute("r", "5");
+            splash.setAttribute("fill", "none");
+            splash.setAttribute("stroke", "#4169E1");
+            splash.setAttribute("stroke-width", "3");
+            splash.setAttribute("opacity", "0.8");
+            splash.classList.add("ripple-animation");
+
+            document.getElementById("effects").appendChild(splash);
+
+            setTimeout(() => {
+                splash.remove();
+            }, 1000);
+        }
+
+        // Очистка подсветки
+        function clearHighlights() {
+            gameState.lilyPads.forEach(pad => {
+                const padElement = document.getElementById(`pad-${pad.id}`);
+                padElement.classList.remove("available");
+            });
+        }
+
+        // Проверка повышения уровня
+        function checkLevelUp() {
+            const requiredScore = gameState.level * 100;
+            if (gameState.score >= requiredScore) {
+                gameState.level++;
+                addFrog(); // Добавляем новую лягушку
+                updateUI();
+            }
+        }
+
+        // Добавление новой лягушки
+        function addFrog() {
+            const availablePads = gameState.lilyPads.filter(pad => !pad.occupied);
+            if (availablePads.length > 0) {
+                const randomPad = availablePads[Math.floor(Math.random() * availablePads.length)];
+                createFrog(randomPad.x, randomPad.y);
+            }
+        }
+
+        // Обновление информации о текущем ходе
+        function updateCurrentTurn() {
+            const turnElement = document.getElementById("currentTurn");
+            if (gameState.selectedFrog) {
+                turnElement.textContent = `Ход: ${gameState.selectedFrog.name}`;
+                turnElement.style.background = "rgba(255, 215, 0, 0.3)";
+                turnElement.style.borderColor = "#FFD700";
+            } else {
+                turnElement.textContent = "Выберите лягушку для хода";
+                turnElement.style.background = "rgba(255, 255, 224, 0.8)";
+                turnElement.style.borderColor = "#FF6347";
+            }
+        }
+
+        // Обновление интерфейса
+        function updateUI() {
+            document.getElementById("score").textContent = gameState.score;
+            document.getElementById("level").textContent = gameState.level;
+        }
+
+        // Управление игрой
+        function startGame() {
+            gameState.isPlaying = true;
+            updateCurrentTurn();
+            console.log("Игра начата!");
+        }
+
+        function pauseGame() {
+            gameState.isPlaying = !gameState.isPlaying;
+            if (!gameState.isPlaying) {
+                clearSelection();
+            }
+            updateCurrentTurn();
+            console.log(gameState.isPlaying ? "Игра возобновлена!" : "Игра приостановлена!");
+        }
+
+        function resetGame() {
+            // Очищаем игровое поле
+            document.getElementById("frogs").innerHTML = "";
+            document.getElementById("lilyPads").innerHTML = "";
+            document.getElementById("effects").innerHTML = "";
+
+            // Сбрасываем состояние
+            gameState = {
+                score: 0,
+                level: 1,
+                isPlaying: false,
+                frogs: [],
+                lilyPads: [],
+                nextFrogId: 1,
+                nextPadId: 1,
+                selectedFrog: null
+            };
+
+            // Переинициализируем
+            initGame();
+            console.log("Игра сброшена!");
+        }
+
+        // Запуск игры при загрузке
+        window.addEventListener("load", () => {
+            initGame();
+            console.log("Игра готова к запуску!");
+        });
+    </script>
+</body>
+</html>
